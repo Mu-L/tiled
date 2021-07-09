@@ -10,7 +10,7 @@ import qbs.FileInfo
 Product {
     name: "distribute"
     type: "installable"
-    builtByDefault: false
+    builtByDefault: (project.snapshot || project.release) && qbs.targetOS.contains("windows")
 
     Depends { name: "cpp" }
     Depends { name: "Qt.core" }
@@ -238,6 +238,8 @@ Product {
                              "pt",
                              "pt_PT",
                              "ru",
+                             "sv",
+                             "th",
                              "tr",
                              "zh_CN",
                              "zh_TW"];

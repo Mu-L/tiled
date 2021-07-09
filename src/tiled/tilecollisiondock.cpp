@@ -415,7 +415,6 @@ void TileCollisionDock::setTile(Tile *tile)
         map->addLayer(objectGroup);
 
         mDummyMapDocument = MapDocumentPtr::create(std::move(map));
-        mDummyMapDocument->setAllowHidingObjects(false);
         mDummyMapDocument->setAllowTileObjects(false);
         mDummyMapDocument->switchCurrentLayer(objectGroup);
 
@@ -438,7 +437,6 @@ void TileCollisionDock::setTile(Tile *tile)
         mObjectsView->setMapDocument(nullptr);
         mToolManager->setMapDocument(nullptr);
     }
-
 
     emit dummyMapDocumentChanged(mDummyMapDocument.data());
 

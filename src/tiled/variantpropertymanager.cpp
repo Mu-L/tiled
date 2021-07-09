@@ -118,9 +118,9 @@ int VariantPropertyManager::attributeType(int propertyType,
 {
     if (propertyType == filePathTypeId()) {
         if (attribute == mFilterAttribute)
-            return QVariant::String;
+            return QMetaType::QString;
         if (attribute == mDirectoryAttribute)
-            return QVariant::Bool;
+            return QMetaType::Bool;
         return 0;
     }
     return QtVariantPropertyManager::attributeType(propertyType, attribute);
@@ -166,15 +166,15 @@ int VariantPropertyManager::unstyledGroupTypeId()
     return qMetaTypeId<UnstyledGroup>();
 }
 
-QString VariantPropertyManager::objectRefLabel(const MapObject *object) const
+QString VariantPropertyManager::objectRefLabel(const MapObject &object)
 {
-    QString label = tr("%1: ").arg(object->id());
-    if (!object->name().isEmpty()) {
-        label.append(object->name());
-        if (!object->type().isEmpty())
-            label.append(tr(" (%1)").arg(object->type()));
-    } else if (!object->type().isEmpty())
-        label.append(tr("(%1)").arg(object->type()));
+    QString label = tr("%1: ").arg(object.id());
+    if (!object.name().isEmpty()) {
+        label.append(object.name());
+        if (!object.type().isEmpty())
+            label.append(tr(" (%1)").arg(object.type()));
+    } else if (!object.type().isEmpty())
+        label.append(tr("(%1)").arg(object.type()));
     else
         label.append(tr("Unnamed object"));
 
@@ -194,7 +194,7 @@ QString VariantPropertyManager::valueText(const QtProperty *property) const
                 return tr("Unset");
 
             if (auto object = ref.object())
-                return objectRefLabel(object);
+                return objectRefLabel(*object);
 
             return tr("%1: Object not found").arg(QString::number(ref.id()));
         }
@@ -238,8 +238,15 @@ QIcon VariantPropertyManager::valueIcon(const QtProperty *property) const
 {
     if (mValues.contains(property)) {
         QVariant value = mValues[property];
-        QString filePath;
         int typeId = propertyType(property);
+
+        if (typeId == displayObjectRefTypeId()) {
+            const DisplayObjectRef ref = value.value<DisplayObjectRef>();
+            if (auto object = ref.object())
+                return ObjectIconManager::instance().iconForObject(*object);
+        }
+
+        QString filePath;
 
         // TODO: Needs a special icon for remote files
         if (typeId == filePathTypeId()) {
@@ -250,12 +257,6 @@ QIcon VariantPropertyManager::valueIcon(const QtProperty *property) const
         if (typeId == tilesetParametersTypeId()) {
             if (TilesetDocument *tilesetDocument = value.value<TilesetDocument*>())
                 filePath = tilesetDocument->tileset()->imageSource().toLocalFile();
-        }
-
-        if (typeId == displayObjectRefTypeId()) {
-            const DisplayObjectRef ref = value.value<DisplayObjectRef>();
-            if (auto object = ref.object())
-                return ObjectIconManager::instance().iconForObject(object);
         }
 
         // TODO: This assumes the file path is an image reference. It should be
@@ -314,7 +315,7 @@ void VariantPropertyManager::setAttribute(QtProperty *property,
     if (mFilePathAttributes.contains(property)) {
         FilePathAttributes &attributes = mFilePathAttributes[property];
         if (attribute == mFilterAttribute) {
-            if (val.type() != QVariant::String && !val.canConvert(QVariant::String))
+            if (val.userType() != QMetaType::QString && !val.canConvert(QMetaType::QString))
                 return;
             QString filter = val.toString();
             if (attributes.filter == filter)
@@ -354,7 +355,7 @@ void VariantPropertyManager::initializeProperty(QtProperty *property)
         mValues[property] = QVariant();
         if (type == filePathTypeId())
             mFilePathAttributes[property] = FilePathAttributes();
-    } else if (type == QVariant::String) {
+    } else if (type == QMetaType::QString) {
         mStringAttributes[property] = StringAttributes();
     } else if (type == alignmentTypeId()) {
         const Qt::Alignment align = Qt::AlignLeft | Qt::AlignVCenter;

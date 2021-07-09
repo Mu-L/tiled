@@ -289,6 +289,7 @@ TilesetView::TilesetView(QWidget *parent)
     setItemDelegate(new TileDelegate(this, this));
     setShowGrid(false);
     setTabKeyNavigation(false);
+    setDropIndicatorShown(true);
 
     QHeaderView *hHeader = horizontalHeader();
     QHeaderView *vHeader = verticalHeader();
@@ -452,6 +453,8 @@ void TilesetView::keyPressEvent(QKeyEvent *event)
         return;
     }
 
+    // TODO: These shortcuts only work while the TilesetView is focused. It
+    // would be preferable if they could be used more globally.
     if (mEditWangSet && mWangBehavior == AssignWholeId && !(event->modifiers() & Qt::ControlModifier)) {
         WangId transformedWangId = mWangId;
 
@@ -467,15 +470,29 @@ void TilesetView::keyPressEvent(QKeyEvent *event)
         }
 
         if (mWangId != transformedWangId) {
-            if (mHoveredIndex.isValid())
-                update(mHoveredIndex);
-
+            setWangId(transformedWangId);
             emit currentWangIdChanged(mWangId);
             return;
         }
     }
 
     return QTableView::keyPressEvent(event);
+}
+
+void TilesetView::setRelocateTiles(bool enabled)
+{
+    if (mRelocateTiles == enabled)
+        return;
+
+    mRelocateTiles = enabled;
+
+    if (enabled)
+        setDragDropMode(QTableView::InternalMove);
+    else
+        setDragDropMode(QTableView::NoDragDrop);
+
+    setMouseTracking(true);
+    viewport()->update();
 }
 
 void TilesetView::setEditWangSet(bool enabled)
@@ -660,19 +677,6 @@ void TilesetView::mouseReleaseEvent(QMouseEvent *event)
     }
 
     QTableView::mouseReleaseEvent(event);
-    return;
-}
-
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-void TilesetView::enterEvent(QEvent *event)
-#else
-void TilesetView::enterEvent(QEnterEvent *event)
-#endif
-{
-    if (mEditWangSet)
-        setFocus();
-
-    QTableView::enterEvent(event);
 }
 
 void TilesetView::leaveEvent(QEvent *event)

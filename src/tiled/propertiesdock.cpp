@@ -421,14 +421,16 @@ void PropertiesDock::showContextMenu(const QPoint &pos)
 
     if (convertMenu) {
         const int convertTo[] = {
-            QVariant::Bool,
-            QVariant::Color,
-            QVariant::Double,
+            QMetaType::Bool,
+            QMetaType::QColor,
+            QMetaType::Double,
             filePathTypeId(),
             objectRefTypeId(),
-            QVariant::Int,
-            QVariant::String
+            QMetaType::Int,
+            QMetaType::QString
         };
+
+        // todo: could include custom property types
 
         for (int toType : convertTo) {
             bool someDifferentType = false;

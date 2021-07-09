@@ -49,7 +49,10 @@ public:
 
 private:
     Preferences();
+    Preferences(const QString &fileName);
     ~Preferences() override;
+
+    void initialize();
 
 public:
     bool showGrid() const;
@@ -62,7 +65,9 @@ public:
     bool snapToFineGrid() const;
     bool snapToPixels() const;
     QColor gridColor() const;
+    QColor backgroundFadeColor() const;
     int gridFine() const;
+    int gridMajor() const;
     qreal objectLineWidth() const;
 
     bool highlightCurrentLayer() const;
@@ -130,6 +135,7 @@ public:
     void setUseOpenGL(bool useOpenGL);
 
     void setObjectTypes(const ObjectTypes &objectTypes);
+    void setPropertyTypes(const PropertyTypes &propertyTypes);
 
     QString objectTypesFile() const;
     void setObjectTypesFile(const QString &filePath);
@@ -141,9 +147,9 @@ public:
     bool isPatron() const;
     void setPatron(bool isPatron);
 
-    bool shouldShowDonationDialog() const;
-    QDate donationDialogTime() const;
-    void setDonationDialogReminder(const QDate &date);
+    bool shouldShowDonationReminder() const;
+    QDate donationReminderTime() const;
+    void setDonationReminder(const QDate &date);
 
     enum { MaxRecentFiles = 12 };
     void addRecentFile(const QString &fileName);
@@ -169,8 +175,8 @@ public:
     { return value(QLatin1String(key), defaultValue).template value<T>(); }
 
     static QString homeLocation();
-    static QString dataLocation();
-    static QString configLocation();
+    QString dataLocation() const;
+    QString configLocation() const;
 
     static QString startupProject();
     static void setStartupProject(const QString &filePath);
@@ -186,7 +192,9 @@ public slots:
     void setSnapToFineGrid(bool snapToFineGrid);
     void setSnapToPixels(bool snapToPixels);
     void setGridColor(QColor gridColor);
+    void setBackgroundFadeColor(QColor backgroundFadeColor);
     void setGridFine(int gridFine);
+    void setGridMajor(int gridMajor);
     void setObjectLineWidth(qreal lineWidth);
     void setHighlightCurrentLayer(bool highlight);
     void setHighlightHoveredObject(bool highlight);
@@ -209,7 +217,9 @@ signals:
     void snapToFineGridChanged(bool snapToFineGrid);
     void snapToPixelsChanged(bool snapToPixels);
     void gridColorChanged(QColor gridColor);
+    void backgroundFadeColorChanged(QColor backgroundFadeColor);
     void gridFineChanged(int gridFine);
+    void gridMajorChanged(int gridMajor);
     void objectLineWidthChanged(qreal lineWidth);
     void highlightCurrentLayerChanged(bool highlight);
     void highlightHoveredObjectChanged(bool highlight);
@@ -227,6 +237,8 @@ signals:
 
     void objectTypesChanged();
 
+    void propertyTypesChanged();
+
     void isPatronChanged();
 
     void recentFilesChanged();
@@ -243,6 +255,7 @@ private:
     void objectTypesFileChangedOnDisk();
 
     FileSystemWatcher mWatcher;
+    bool mPortable = false;
 
     QString mObjectTypesFile;
     QDateTime mObjectTypesFileLastSaved;

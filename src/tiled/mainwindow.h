@@ -58,6 +58,7 @@ class MapEditor;
 class MapScene;
 class MapView;
 class ObjectTypesEditor;
+class PropertyTypesEditor;
 class ProjectDock;
 class ProjectModel;
 class TilesetDocument;
@@ -127,10 +128,10 @@ private:
     bool closeAllFiles();
 
     void openProject();
-    void openProjectFile(const QString &fileName);
+    bool openProjectFile(const QString &fileName);
     void saveProjectAs();
     void closeProject();
-    void switchProject(Project project);
+    bool switchProject(Project project);
     void restoreSession();
     void projectProperties();
 
@@ -141,6 +142,9 @@ private:
     void delete_();
     void openPreferences();
     void openCrashReporterPopup();
+    void openProjectExtensionsPopup();
+
+    void showPopup(QWidget *widget);
     void updatePopupGeometry(QSize size);
 
     void labelVisibilityActionTriggered(QAction *action);
@@ -150,6 +154,7 @@ private:
     void fitInView();
     void setFullScreen(bool fullScreen);
     void toggleClearView(bool clearView);
+    void setLayoutLocked(bool locked);
     void resetToDefaultLayout();
 
     bool newTileset(const QString &path = QString());
@@ -167,7 +172,7 @@ private:
     void updateZoomActions();
     void openDocumentation();
     void openForum();
-    void showDonationDialog();
+    void showDonationPopup();
     void aboutTiled();
     void openRecentFile();
     void reopenClosedFile();
@@ -184,7 +189,7 @@ private:
     void autoMappingWarning(bool automatic);
 
     void onObjectTypesEditorClosed();
-
+    void onPropertyTypesEditorClosed();
     void ensureHasBorderInFullScreen();
 
     /**
@@ -221,6 +226,9 @@ private:
     void exportMapAs(MapDocument *mapDocument);
     void exportTilesetAs(TilesetDocument *tilesetDocument);
 
+    QList<QDockWidget*> allDockWidgets() const;
+    QList<QToolBar*> allToolBars() const;
+
     Ui::MainWindow *mUi;
     Document *mDocument = nullptr;
     Zoomable *mZoomable = nullptr;
@@ -229,6 +237,7 @@ private:
     ProjectDock *mProjectDock;
     IssuesDock *mIssuesDock;
     ObjectTypesEditor *mObjectTypesEditor;
+    PropertyTypesEditor *mPropertyTypesEditor;
     QPointer<LocatorWidget> mLocatorWidget;
     QPointer<QWidget> mPopupWidget;
     double mPopupWidgetShowProgress = 1.0;
@@ -241,8 +250,9 @@ private:
     QMenu *mViewsAndToolbarsMenu;
     QAction *mViewsAndToolbarsAction;
     QAction *mShowObjectTypesEditor;
-
+    QAction *mShowPropertyTypesEditor;
     QAction *mResetToDefaultLayout;
+    QAction *mLockLayout;
 
     void setupQuickStamps();
 

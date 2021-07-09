@@ -19,7 +19,7 @@ contains(QT_CONFIG, opengl):minQtVersion(6, 0, 0) {
     QT += openglwidgets
 }
 
-contains(QT_CONFIG, dbus) {
+!contains(DISABLE_DBUS, yes):contains(QT_CONFIG, dbus) {
     QT += dbus
     DEFINES += TILED_ENABLE_DBUS
 }
@@ -117,10 +117,11 @@ SOURCES += aboutdialog.cpp \
     createtemplatetool.cpp \
     createtextobjecttool.cpp \
     createtileobjecttool.cpp \
+    custompropertieshelper.cpp \
     debugdrawitem.cpp \
     document.cpp \
     documentmanager.cpp \
-    donationdialog.cpp \
+    donationpopup.cpp \
     editableasset.cpp \
     editablegrouplayer.cpp \
     editableimagelayer.cpp \
@@ -199,17 +200,21 @@ SOURCES += aboutdialog.cpp \
     painttilelayer.cpp \
     pluginlistmodel.cpp \
     pointhandle.cpp \
+    popupwidget.cpp \
     preferences.cpp \
+    preferencesdialog.cpp \
     project.cpp \
     projectdock.cpp \
     projectmanager.cpp \
     projectmodel.cpp \
     projectpropertiesdialog.cpp \
-    preferencesdialog.cpp \
     propertiesdock.cpp \
     propertybrowser.cpp \
+    propertytypeseditor.cpp \
+    propertytypesmodel.cpp \
     raiselowerhelper.cpp \
     regionvaluetype.cpp \
+    relocatetiles.cpp \
     reparentlayers.cpp \
     replacetemplate.cpp \
     replacetileset.cpp \
@@ -352,10 +357,11 @@ HEADERS += aboutdialog.h \
     createtemplatetool.h \
     createtextobjecttool.h \
     createtileobjecttool.h \
+    custompropertieshelper.h \
     debugdrawitem.h \
     document.h \
     documentmanager.h \
-    donationdialog.h \
+    donationpopup.h \
     editableasset.h \
     editablegrouplayer.h \
     editableimagelayer.h \
@@ -434,6 +440,7 @@ HEADERS += aboutdialog.h \
     painttilelayer.h \
     pluginlistmodel.h \
     pointhandle.h \
+    popupwidget.h \
     preferences.h \
     preferencesdialog.h \
     project.h \
@@ -443,10 +450,13 @@ HEADERS += aboutdialog.h \
     projectpropertiesdialog.h \
     propertiesdock.h \
     propertybrowser.h \
+    propertytypeseditor.h \
+    propertytypesmodel.h \
     raiselowerhelper.h \
     randompicker.h \
     rangeset.h \
     regionvaluetype.h \
+    relocatetiles.h \
     reparentlayers.h \
     replacetemplate.h \
     replacetileset.h \
@@ -530,7 +540,6 @@ FORMS += aboutdialog.ui \
     addpropertydialog.ui \
     commanddialog.ui \
     commandsedit.ui \
-    donationdialog.ui \
     exportasimagedialog.ui \
     imagecolorpickerwidget.ui \
     mainwindow.ui \
@@ -543,6 +552,7 @@ FORMS += aboutdialog.ui \
     offsetmapdialog.ui \
     preferencesdialog.ui \
     projectpropertiesdialog.ui \
+    propertytypeseditor.ui \
     resizedialog.ui \
     shortcutsettingspage.ui \
     texteditordialog.ui \

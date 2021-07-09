@@ -29,6 +29,7 @@ class QMenu;
 class QModelIndex;
 class QPushButton;
 class QSortFilterProxyModel;
+class QStackedWidget;
 class QTabWidget;
 class QToolBar;
 class QToolButton;
@@ -96,10 +97,12 @@ private:
     void refreshCurrentWangSet();
     void refreshCurrentWangId();
     void refreshCurrentWangColor();
+    void wangColorIndexPressed(const QModelIndex &index);
     void documentChanged(const ChangeEvent &change);
     void wangSetChanged();
-    void indexPressed(const QModelIndex &index);
+    void wangSetIndexPressed(const QModelIndex &index);
     void expandRows(const QModelIndex &parent, int first, int last);
+    void checkAnyWangSets();
     void addColor();
     void removeColor();
 
@@ -120,24 +123,25 @@ private:
     QAction *mAddColor;
     QAction *mRemoveColor;
 
-    Document *mDocument;
+    Document *mDocument = nullptr;
+    QStackedWidget *mStack;
     WangSetView *mWangSetView;
     QPushButton *mEraseWangIdsButton;
-    WangSet *mCurrentWangSet;
+    WangSet *mCurrentWangSet = nullptr;
     WangId mCurrentWangId;
     TilesetDocumentsFilterModel *mTilesetDocumentFilterModel;
     WangColorView *mWangColorView;
     WangColorModel *mWangColorModel;
     QSortFilterProxyModel *mWangColorFilterModel;
     WangSetModel *mWangSetModel;
-    HasChildrenFilterModel *mProxyModel;
+    HasChildrenFilterModel *mWangSetProxyModel;
     QWidget *mWangColorWidget;
     WangTemplateView *mWangTemplateView;
     WangTemplateModel *mWangTemplateModel;
     QTabWidget *mTemplateAndColorView;
     QWidget *mTemplateAndColorWidget;
 
-    bool mInitializing;
+    bool mInitializing = false;
 };
 
 } // namespace Tiled

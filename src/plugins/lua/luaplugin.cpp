@@ -270,8 +270,8 @@ void LuaWriter::writeProperties(const Properties &properties)
             mWriter.writeEndTable();
             mWriter.setSuppressNewlines(false);
         } else {
-            const QVariant value = toExportValue(it.value(), mDir);
-            mWriter.writeQuotedKeyAndValue(it.key(), value);
+            const auto exportValue = ExportValue::fromPropertyValue(it.value(), mDir.path());
+            mWriter.writeQuotedKeyAndValue(it.key(), exportValue.value);
         }
     }
 
@@ -382,9 +382,12 @@ void LuaWriter::writeTileset(const Tileset &tileset,
 
     mWriter.writeKeyAndValue("tilecount", tileset.tileCount());
     mWriter.writeStartTable("tiles");
+
+    const bool includeAllTiles = tileset.anyTileOutOfOrder();
+
     for (const Tile *tile : tileset.tiles()) {
         // For brevity only write tiles with interesting properties
-        if (!includeTile(tile))
+        if (!includeAllTiles && !includeTile(tile))
             continue;
 
         mWriter.writeStartTable();

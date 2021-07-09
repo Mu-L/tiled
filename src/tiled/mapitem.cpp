@@ -71,6 +71,7 @@ public:
         Preferences *prefs = Preferences::instance();
         connect(prefs, &Preferences::showGridChanged, this, [this] (bool visible) { setVisible(visible); });
         connect(prefs, &Preferences::gridColorChanged, this, [this] { update(); });
+        connect(prefs, &Preferences::gridMajorChanged, this, [this] { update(); });
 
         // New layer may have a different offset
         connect(mapDocument, &MapDocument::currentLayerChanged,
@@ -107,7 +108,7 @@ public:
         Preferences *prefs = Preferences::instance();
         mMapDocument->renderer()->drawGrid(painter,
                                            option->exposedRect.translated(-mOffset),
-                                           prefs->gridColor());
+                                           prefs->gridColor(), prefs->gridMajor());
     }
 
     void updateOffset()
@@ -150,6 +151,7 @@ MapItem::MapItem(const MapDocumentPtr &mapDocument, DisplayMode displayMode,
     connect(prefs, &Preferences::showTileObjectOutlinesChanged, this, &MapItem::setShowTileObjectOutlines);
     connect(prefs, &Preferences::highlightCurrentLayerChanged, this, &MapItem::updateSelectedLayersHighlight);
     connect(prefs, &Preferences::objectTypesChanged, this, &MapItem::syncAllObjectItems);
+    connect(prefs, &Preferences::backgroundFadeColorChanged, this, [this] (QColor color) { mDarkRectangle->setBrush(color); });
 
     connect(mapDocument.data(), &Document::changed, this, &MapItem::documentChanged);
     connect(mapDocument.data(), &MapDocument::mapChanged, this, &MapItem::mapChanged);
@@ -169,7 +171,7 @@ MapItem::MapItem(const MapDocumentPtr &mapDocument, DisplayMode displayMode,
     updateBoundingRect();
 
     mDarkRectangle->setPen(Qt::NoPen);
-    mDarkRectangle->setBrush(Qt::black);
+    mDarkRectangle->setBrush(prefs->backgroundFadeColor());
     mDarkRectangle->setOpacity(darkeningFactor);
     mDarkRectangle->setRect(QRectF(INT_MIN / 512, INT_MIN / 512,
                                    INT_MAX / 256, INT_MAX / 256));
@@ -262,9 +264,9 @@ void MapItem::updateLayerPositions()
 {
     const MapScene *mapScene = static_cast<MapScene*>(scene());
 
-    for (LayerItem *item : qAsConst(mLayerItems)) {
-        const Layer &layer = *item->layer();
-        item->setPos(layer.offset() + mapScene->parallaxOffset(layer));
+    for (LayerItem *layerItem : qAsConst(mLayerItems)) {
+        const Layer &layer = *layerItem->layer();
+        layerItem->setPos(layer.offset() + mapScene->parallaxOffset(layer));
     }
 
     if (mDisplayMode == Editable) {
@@ -713,6 +715,12 @@ LayerItem *MapItem::createLayerItem(Layer *layer)
     }
 
     Q_ASSERT(layerItem);
+
+    // If we're not yet part of the MapScene, it means this happens in the
+    // MapItem constructor and the layer will be positioned by a call to
+    // updateLayerPositions from the MapScene.
+    if (const MapScene *mapScene = static_cast<MapScene*>(scene()))
+        layerItem->setPos(layer->offset() + mapScene->parallaxOffset(*layer));
 
     layerItem->setVisible(layer->isVisible());
     layerItem->setEnabled(mDisplayMode == Editable);

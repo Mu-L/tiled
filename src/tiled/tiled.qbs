@@ -16,7 +16,7 @@ QtGuiApplication {
     Depends { name: "ib"; condition: qbs.targetOS.contains("macos") }
     Depends { name: "Qt"; submodules: ["core", "widgets", "qml"]; versionAtLeast: "5.6" }
     Depends { name: "Qt.openglwidgets"; condition: Qt.core.versionMajor >= 6 }
-    Depends { name: "Qt.dbus"; condition: qbs.targetOS.contains("linux"); required: false }
+    Depends { name: "Qt.dbus"; condition: qbs.targetOS.contains("linux") && project.dbus; required: false }
 
     property bool qtcRunnable: true
 
@@ -36,8 +36,6 @@ QtGuiApplication {
     cpp.rpaths: {
         if (qbs.targetOS.contains("darwin"))
             return ["@loader_path/../Frameworks"];
-        else if (project.linuxArchive)
-            return ["$ORIGIN/lib"];
         else
             return ["$ORIGIN/../lib"];
     }
@@ -48,6 +46,7 @@ QtGuiApplication {
         var defs = [
             "TILED_VERSION=" + version,
             "QT_DISABLE_DEPRECATED_BEFORE=QT_VERSION_CHECK(5,15,0)",
+            "QT_NO_DEPRECATED_WARNINGS",
             "QT_NO_CAST_FROM_ASCII",
             "QT_NO_CAST_TO_ASCII",
             "QT_NO_FOREACH",
@@ -61,7 +60,7 @@ QtGuiApplication {
         if (project.enableZstd)
             defs.push("TILED_ZSTD_SUPPORT");
 
-        if (qbs.targetOS.contains("linux") && Qt.dbus.present)
+        if (qbs.targetOS.contains("linux") && project.dbus && Qt.dbus.present)
             defs.push("TILED_ENABLE_DBUS");
 
         if (project.sentry)
@@ -206,15 +205,16 @@ QtGuiApplication {
         "createtextobjecttool.h",
         "createtileobjecttool.cpp",
         "createtileobjecttool.h",
+        "custompropertieshelper.cpp",
+        "custompropertieshelper.h",
         "debugdrawitem.cpp",
         "debugdrawitem.h",
         "document.cpp",
         "document.h",
         "documentmanager.cpp",
         "documentmanager.h",
-        "donationdialog.cpp",
-        "donationdialog.h",
-        "donationdialog.ui",
+        "donationpopup.cpp",
+        "donationpopup.h",
         "editableasset.cpp",
         "editableasset.h",
         "editablegrouplayer.cpp",
@@ -388,6 +388,8 @@ QtGuiApplication {
         "pluginlistmodel.h",
         "pointhandle.cpp",
         "pointhandle.h",
+        "popupwidget.cpp",
+        "popupwidget.h",
         "preferences.cpp",
         "preferencesdialog.cpp",
         "preferencesdialog.h",
@@ -408,12 +410,19 @@ QtGuiApplication {
         "propertiesdock.h",
         "propertybrowser.cpp",
         "propertybrowser.h",
+        "propertytypeseditor.cpp",
+        "propertytypeseditor.h",
+        "propertytypeseditor.ui",
+        "propertytypesmodel.cpp",
+        "propertytypesmodel.h",
         "raiselowerhelper.cpp",
         "raiselowerhelper.h",
         "randompicker.h",
         "rangeset.h",
         "regionvaluetype.cpp",
         "regionvaluetype.h",
+        "relocatetiles.cpp",
+        "relocatetiles.h",
         "reparentlayers.cpp",
         "reparentlayers.h",
         "replacetemplate.cpp",
@@ -607,8 +616,7 @@ QtGuiApplication {
         condition: !qbs.targetOS.contains("darwin")
         qbs.install: true
         qbs.installDir: {
-            if (qbs.targetOS.contains("windows")
-                    || project.linuxArchive)
+            if (qbs.targetOS.contains("windows"))
                 return ""
             else
                 return "bin"

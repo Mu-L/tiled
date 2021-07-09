@@ -40,6 +40,7 @@
 #include <QKeyEvent>
 #include <QMainWindow>
 #include <QMenu>
+#include <QPainter>
 #include <QProcess>
 #include <QRegularExpression>
 #if QT_VERSION < QT_VERSION_CHECK(5,15,0)
@@ -102,8 +103,7 @@ QStringList cleanFilterList(const QString &filter)
     QRegularExpression regexp(QString::fromLatin1(filterRegExp));
     Q_ASSERT(regexp.isValid());
     QString f = filter;
-    QRegularExpressionMatch match;
-    filter.indexOf(regexp, 0, &match);
+    QRegularExpressionMatch match = regexp.match(filter);
     if (match.hasMatch())
         f = match.captured(2);
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
@@ -114,10 +114,10 @@ QStringList cleanFilterList(const QString &filter)
 }
 
 /**
- * Returns whether the \a fileName has an extension that is matched by
+ * Returns whether the \a filePath has an extension that is matched by
  * the \a nameFilter.
  */
-bool fileNameMatchesNameFilter(const QString &fileName,
+bool fileNameMatchesNameFilter(const QString &filePath,
                                const QString &nameFilter)
 {
 #if QT_VERSION < QT_VERSION_CHECK(5,15,0)
@@ -130,6 +130,7 @@ bool fileNameMatchesNameFilter(const QString &fileName,
 #endif
 
     const QStringList filterList = cleanFilterList(nameFilter);
+    const QString fileName = QFileInfo(filePath).fileName();
     for (const QString &filter : filterList) {
 #if QT_VERSION < QT_VERSION_CHECK(5,15,0)
         rx.setPattern(filter);
@@ -279,6 +280,17 @@ RangeSet<int> matchingRanges(const QStringList &words, QStringRef string)
     return result;
 }
 
+QIcon colorIcon(const QColor &color, QSize size)
+{
+    QPixmap pixmap(size);
+    pixmap.fill(color);
+
+    QPainter painter(&pixmap);
+    painter.setPen(QColor(0, 0, 0, 128));
+    painter.drawRect(0, 0, size.width() - 1, size.height() - 1);
+
+    return QIcon(pixmap);
+}
 
 /**
  * Restores a widget's geometry.

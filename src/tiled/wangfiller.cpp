@@ -168,6 +168,10 @@ void WangFiller::fillRegion(TileLayer &target,
     int margin = mWangSet.maximumColorDistance() + (mStaggeredRenderer != nullptr);
     bounds.adjust(-margin, -margin, margin, margin);
 
+    // Don't try to make corrections outside of a fixed map
+    if (!mMapRenderer->map()->infinite())
+        bounds &= back.rect();
+
     // Keep a list of points that need correction
     QVector<QPoint> corrections;
 
@@ -317,7 +321,7 @@ bool WangFiller::findBestMatch(const TileLayer &target,
     for (int i = 0, i_end = wangIdsAndCells.size(); i < i_end; ++i)
         processCandidate(wangIdsAndCells[i].wangId, wangIdsAndCells[i].cell);
 
-    if (mErasingEnabled)
+    if (mCorrectionsEnabled)
         processCandidate(WangId(), Cell());
 
     // Choose a candidate at random, with consideration for probability

@@ -352,6 +352,9 @@ void MapEditor::removeDocument(Document *document)
     Q_ASSERT(mapDocument);
     Q_ASSERT(mWidgetForMap.contains(mapDocument));
 
+    if (mapDocument == mCurrentMapDocument)
+        setCurrentDocument(nullptr);
+
     MapView *mapView = mWidgetForMap.take(mapDocument);
     // remove first, to keep it valid while the current widget changes
     mWidgetStack->removeWidget(mapView);
@@ -406,10 +409,7 @@ void MapEditor::setCurrentDocument(Document *document)
             mZoomable->setComboBox(mZoomComboBox.get());
         }
 
-        connect(mCurrentMapDocument, &MapDocument::currentObjectChanged,
-                this, [this, mapDocument] { mPropertiesDock->setDocument(mapDocument); });
-
-        connect(mapView, &MapView::focused,
+        connect(mCurrentMapDocument, &MapDocument::currentObjectSet,
                 this, [this, mapDocument] { mPropertiesDock->setDocument(mapDocument); });
 
         mReversingProxyModel->setSourceModel(mapDocument->layerModel());
@@ -801,8 +801,8 @@ void MapEditor::selectWangBrush()
 
 void MapEditor::currentWidgetChanged()
 {
-    auto mapView = static_cast<MapView*>(mWidgetStack->currentWidget());
-    setCurrentDocument(mapView ? mapView->mapScene()->mapDocument() : nullptr);
+    if (!mWidgetStack->currentWidget())
+        setCurrentDocument(nullptr);
 }
 
 void MapEditor::cursorChanged(const QCursor &cursor)

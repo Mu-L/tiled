@@ -45,11 +45,13 @@
 #include "toolmanager.h"
 #include "utils.h"
 
+#include <QActionGroup>
 #include <QApplication>
 #include <QGraphicsItem>
 #include <QGraphicsView>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QToolBar>
 #include <QTransform>
 #include <QUndoStack>
 
@@ -310,6 +312,9 @@ void ResizeHandle::paint(QPainter *painter,
 
 } // namespace Tiled
 
+Preference<Qt::ItemSelectionMode> ObjectSelectionTool::ourSelectionMode {
+    "ObjectSelectionTool/SelectionMode", Qt::IntersectsItemShape
+};
 
 ObjectSelectionTool::ObjectSelectionTool(QObject *parent)
     : AbstractObjectTool("ObjectSelectionTool",
@@ -319,18 +324,24 @@ ObjectSelectionTool::ObjectSelectionTool(QObject *parent)
                          parent)
     , mSelectionRectangle(new SelectionRectangle)
     , mOriginIndicator(new OriginIndicator)
-    , mMousePressed(false)
-    , mHoveredObject(nullptr)
-    , mHoveredHandle(nullptr)
-    , mClickedObject(nullptr)
-    , mClickedOriginIndicator(nullptr)
-    , mClickedRotateHandle(nullptr)
-    , mClickedResizeHandle(nullptr)
-    , mResizingLimitHorizontal(false)
-    , mResizingLimitVertical(false)
-    , mMode(Resize)
-    , mAction(NoAction)
+    , mSelectionMode(ourSelectionMode)
 {
+    QActionGroup *selectionGroup = new QActionGroup(this);
+    mSelectIntersected = new QAction(selectionGroup);
+    mSelectIntersected->setCheckable(true);
+    mSelectIntersected->setIcon(QIcon(QStringLiteral("://images/scalable/select_touch.svg")));
+    mSelectContained = new QAction(selectionGroup);
+    mSelectContained->setCheckable(true);
+    mSelectContained->setIcon(QIcon(QStringLiteral("://images/scalable/select_enclose.svg")));
+
+    if (mSelectionMode == Qt::IntersectsItemShape)
+        mSelectIntersected->setChecked(true);
+    else
+        mSelectContained->setChecked(true);
+
+    connect(mSelectIntersected, &QAction::triggered, [this] { setSelectionMode(Qt::IntersectsItemShape); });
+    connect(mSelectContained, &QAction::triggered, [this] { setSelectionMode(Qt::ContainsItemShape); });
+
     for (int i = 0; i < CornerAnchorCount; ++i)
         mRotateHandles[i] = new RotateHandle(static_cast<AnchorPosition>(i));
     for (int i = 0; i < AnchorCount; ++i)
@@ -341,6 +352,8 @@ ObjectSelectionTool::ObjectSelectionTool(QObject *parent)
         if (mapScene() && mapDocument()->hoveredMapObject())
             updateHover(mLastMousePos);
     });
+
+    languageChangedImpl();
 }
 
 ObjectSelectionTool::~ObjectSelectionTool()
@@ -503,6 +516,7 @@ void ObjectSelectionTool::mouseMoved(const QPointF &pos,
     switch (mAction) {
     case Selecting:
         mSelectionRectangle->setRectangle(QRectF(mStart, pos).normalized());
+        mapDocument()->setAboutToBeSelectedObjects(objectsAboutToBeSelected(pos, modifiers));
         break;
     case Moving:
         updateMovingItems(pos, modifiers);
@@ -729,6 +743,12 @@ void ObjectSelectionTool::mouseDoubleClicked(QGraphicsSceneMouseEvent *event)
 void ObjectSelectionTool::modifiersChanged(Qt::KeyboardModifiers modifiers)
 {
     mModifiers = modifiers;
+
+    if ((mSelectionMode == Qt::IntersectsItemShape) ^ modifiers.testFlag(Qt::AltModifier))
+        mSelectIntersected->setChecked(true);
+    else
+        mSelectContained->setChecked(true);
+
     refreshCursor();
 }
 
@@ -737,6 +757,21 @@ void ObjectSelectionTool::languageChanged()
     AbstractObjectTool::languageChanged();
 
     setName(tr("Select Objects"));
+    languageChangedImpl();
+}
+
+void ObjectSelectionTool::languageChangedImpl()
+{
+    mSelectIntersected->setText(tr("Select Touched Objects"));
+    mSelectContained->setText(tr("Select Enclosed Objects"));
+}
+
+void ObjectSelectionTool::populateToolBar(QToolBar *toolBar)
+{
+    AbstractObjectTool::populateToolBar(toolBar);
+    toolBar->addSeparator();
+    toolBar->addAction(mSelectIntersected);
+    toolBar->addAction(mSelectContained);
 }
 
 void ObjectSelectionTool::changeEvent(const ChangeEvent &event)
@@ -756,6 +791,10 @@ void ObjectSelectionTool::changeEvent(const ChangeEvent &event)
         break;
     case ChangeEvent::MapObjectsAboutToBeRemoved:
         objectsAboutToBeRemoved(static_cast<const MapObjectsEvent&>(event).mapObjects);
+        break;
+    case ChangeEvent::MapObjectsAdded:
+        if (mAction == Selecting)
+            mapDocument()->setAboutToBeSelectedObjects(objectsAboutToBeSelected(mLastMousePos, mModifiers));
         break;
     default:
         break;
@@ -1064,6 +1103,18 @@ void ObjectSelectionTool::objectsAboutToBeRemoved(const QList<MapObject *> &obje
         abortCurrentAction(UserInteraction, objects);
 }
 
+void ObjectSelectionTool::setSelectionMode(Qt::ItemSelectionMode selectionMode)
+{
+    if (mSelectionMode == selectionMode)
+        return;
+
+    mSelectionMode = selectionMode;
+    ourSelectionMode = selectionMode;
+
+    if (mAction == Selecting)
+        mapDocument()->setAboutToBeSelectedObjects(objectsAboutToBeSelected(mLastMousePos, mModifiers));
+}
+
 void ObjectSelectionTool::updateHover(const QPointF &pos)
 {
     Handle *hoveredHandle = nullptr;
@@ -1097,18 +1148,29 @@ void ObjectSelectionTool::updateHover(const QPointF &pos)
     mapDocument()->setHoveredMapObject((mAction == NoAction) ? hoveredObject : nullptr);
 }
 
-void ObjectSelectionTool::updateSelection(const QPointF &pos,
-                                          Qt::KeyboardModifiers modifiers)
+QList<MapObject*> ObjectSelectionTool::objectsAboutToBeSelected(const QPointF &pos,
+                                                                Qt::KeyboardModifiers modifiers) const
 {
+    QList<MapObject*> selectedObjects;
+
+    if (mAction != Selecting)
+        return selectedObjects;
+
     QRectF rect = QRectF(mStart, pos).normalized();
 
     // Make sure the rect has some contents, otherwise intersects returns false
     rect.setWidth(qMax<qreal>(1, rect.width()));
     rect.setHeight(qMax<qreal>(1, rect.height()));
 
-    QList<MapObject*> selectedObjects;
+    Qt::ItemSelectionMode selectionMode = mSelectionMode;
 
-    const QList<QGraphicsItem *> &items = mapScene()->items(rect);
+    // Alt toggles selection mode temporarily
+    if (modifiers & Qt::AltModifier) {
+        selectionMode = selectionMode == Qt::ContainsItemShape ? Qt::IntersectsItemShape
+                                                               : Qt::ContainsItemShape;
+    }
+
+    const QList<QGraphicsItem *> &items = mapScene()->items(rect, selectionMode);
     for (QGraphicsItem *item : items) {
         if (!item->isEnabled())
             continue;
@@ -1119,6 +1181,14 @@ void ObjectSelectionTool::updateSelection(const QPointF &pos,
 
     filterMapObjects(selectedObjects);
 
+    return selectedObjects;
+}
+
+void ObjectSelectionTool::updateSelection(const QPointF &pos,
+                                          Qt::KeyboardModifiers modifiers)
+{
+    QList<MapObject*> selectedObjects = objectsAboutToBeSelected(pos, modifiers);
+
     if (modifiers & (Qt::ControlModifier | Qt::ShiftModifier)) {
         for (MapObject *object : mapDocument()->selectedObjects())
             if (!selectedObjects.contains(object))
@@ -1127,6 +1197,7 @@ void ObjectSelectionTool::updateSelection(const QPointF &pos,
         setMode(Resize);    // new selection resets edit mode
     }
 
+    mapDocument()->setAboutToBeSelectedObjects({});
     mapDocument()->setSelectedObjects(selectedObjects);
 }
 
@@ -1687,6 +1758,9 @@ void ObjectSelectionTool::refreshCursor()
     }
     case Moving:
         cursorShape = Qt::SizeAllCursor;
+        break;
+    case Selecting:
+        mapDocument()->setAboutToBeSelectedObjects(objectsAboutToBeSelected(mLastMousePos, mModifiers));
         break;
     default:
         break;

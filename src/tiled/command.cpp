@@ -86,6 +86,13 @@ static QString replaceVariables(const QString &string, bool quoteValues = true)
                 finalString.replace(QLatin1String("%layername"),
                                     replaceString.arg(layer->name()));
             }
+        } else if (TilesetDocument *tilesetDocument = qobject_cast<TilesetDocument*>(document)) {
+            QStringList selectedTileIds;
+            for (Tile *tile : tilesetDocument->selectedTiles())
+                selectedTileIds.append(QString::number(tile->id()));
+
+            finalString.replace(QLatin1String("%tileid"),
+                                replaceString.arg(selectedTileIds.join(QLatin1Char(','))));
         }
 
         if (MapObject *currentObject = dynamic_cast<MapObject *>(document->currentObject())) {
@@ -122,7 +129,14 @@ QString Command::finalWorkingDirectory() const
  */
 QString Command::finalCommand() const
 {
-    QString finalCommand = QStringLiteral("%1 %2").arg(executable, arguments);
+    QString exe = executable.trimmed();
+
+    // Quote the executable when not already done, to make it work even when
+    // the path contains spaces.
+    if (!exe.startsWith(QLatin1Char('"')) && !exe.startsWith(QLatin1Char('\'')))
+        exe.prepend(QLatin1Char('"')).append(QLatin1Char('"'));
+
+    QString finalCommand = QStringLiteral("%1 %2").arg(exe, arguments);
     return replaceVariables(finalCommand);
 }
 

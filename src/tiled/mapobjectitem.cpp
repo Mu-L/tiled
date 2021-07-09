@@ -23,7 +23,6 @@
 #include "mapobjectitem.h"
 
 #include "geometry.h"
-#include "isometricrenderer.h"
 #include "mapdocument.h"
 #include "mapobject.h"
 #include "maprenderer.h"
@@ -31,7 +30,6 @@
 #include "mapview.h"
 #include "objectgroup.h"
 #include "objectgroupitem.h"
-#include "orthogonalrenderer.h"
 #include "tile.h"
 #include "utils.h"
 #include "zoomable.h"
@@ -111,10 +109,8 @@ void MapObjectItem::setIsHoverIndicator(bool isHoverIndicator)
 
     if (isHoverIndicator) {
         auto totalOffset = static_cast<MapScene*>(scene())->absolutePositionForLayer(*mObject->objectGroup());
-        setOpacity(0.5);
         setTransform(QTransform::fromTranslate(totalOffset.x(), totalOffset.y()));
     } else {
-        setOpacity(1.0);
         setTransform(QTransform());
     }
 
@@ -139,6 +135,10 @@ void MapObjectItem::paint(QPainter *painter,
 {
     const qreal scale = static_cast<MapView*>(widget->parent())->zoomable()->scale();
     const QColor color = mIsHoveredIndicator ? mColor.lighter() : mColor;
+    const qreal previousOpacity = painter->opacity();
+
+    if (mIsHoveredIndicator)
+        painter->setOpacity(0.4);
 
     painter->translate(-pos());
     mMapDocument->renderer()->setPainterScale(scale);
@@ -146,6 +146,8 @@ void MapObjectItem::paint(QPainter *painter,
     painter->translate(pos());
 
     if (mIsHoveredIndicator) {
+        painter->setOpacity(0.6);
+
         // TODO: Code mostly duplicated in MapObjectOutline
         const QPointF pixelPos = mMapDocument->renderer()->pixelToScreenCoords(mObject->position());
         QRectF bounds = mObject->screenBounds(*mMapDocument->renderer());
@@ -158,14 +160,15 @@ void MapObjectItem::paint(QPainter *painter,
             QLineF(bounds.topRight(), bounds.bottomRight())
         };
 
+        const qreal devicePixelRatio = painter->device()->devicePixelRatioF();
+        const qreal dashLength = std::ceil(Utils::dpiScaled(2) * devicePixelRatio);
+
         // Draw a solid white line
-        QPen pen(Qt::white, 1.0, Qt::SolidLine);
+        QPen pen(Qt::white, 1.5 * devicePixelRatio, Qt::SolidLine);
         pen.setCosmetic(true);
+        painter->setRenderHint(QPainter::Antialiasing);
         painter->setPen(pen);
         painter->drawLines(lines, 4);
-
-        const qreal devicePixelRatio = painter->device()->devicePixelRatioF();
-        const qreal dashLength = std::ceil(Utils::dpiScaled(3) * devicePixelRatio);
 
         // Draw a black dashed line above the white line
         pen.setColor(Qt::black);
@@ -173,6 +176,8 @@ void MapObjectItem::paint(QPainter *painter,
         pen.setDashPattern({dashLength, dashLength});
         painter->setPen(pen);
         painter->drawLines(lines, 4);
+
+        painter->setOpacity(previousOpacity);
     }
 }
 
@@ -197,13 +202,7 @@ void MapObjectItem::expandBoundsToCoverTileCollisionObjects(QRectF &bounds)
                   QSize(1, 1),
                   tileset->gridSize());
 
-    std::unique_ptr<MapRenderer> renderer;
-
-    if (tileset->orientation() == Tileset::Orthogonal)
-        renderer = std::make_unique<OrthogonalRenderer>(&map);
-    else
-        renderer = std::make_unique<IsometricRenderer>(&map);
-
+    const auto renderer = MapRenderer::create(&map);
     const QTransform tileTransform = tileCollisionObjectsTransform(*tile);
 
     for (MapObject *object : tile->objectGroup()->objects()) {

@@ -397,7 +397,7 @@ void WangBrush::updateStatusInfo()
 {
     if (brushItem()->isVisible()) {
         QString wangColor;
-        if (mWangSet && mCurrentColor)
+        if (mWangSet && mCurrentColor && mCurrentColor <= mWangSet->colorCount())
             wangColor = mWangSet->colorAt(mCurrentColor)->name();
 
         if (!wangColor.isEmpty())
@@ -421,8 +421,24 @@ void WangBrush::updateStatusInfo()
 void WangBrush::wangSetChanged(const WangSet *wangSet)
 {
     mCurrentColor = 0;
-    mBrushMode = Idle;
     mWangSet = wangSet;
+
+    if (mWangSet) {
+        switch (mWangSet->type()) {
+        case WangSet::Corner:
+            mBrushMode = PaintCorner;
+            break;
+        case WangSet::Edge:
+            mBrushMode = PaintEdge;
+            break;
+        case WangSet::Mixed: {
+            mBrushMode = PaintEdgeAndCorner;
+            break;
+        }
+        }
+    } else {
+        mBrushMode = Idle;
+    }
 }
 
 void WangBrush::captureHoverColor()
@@ -608,10 +624,13 @@ void WangBrush::updateBrush()
         fill.region = completeRegion;
     }
 
+    // Don't try to make changes outside of a fixed map
+    if (!mapDocument()->map()->infinite())
+        fill.region &= currentLayer->rect();
+
     SharedTileLayer stamp = SharedTileLayer::create(QString(), 0, 0, 0, 0);
 
     WangFiller wangFiller{ *mWangSet, mapDocument()->renderer() };
-    wangFiller.setErasingEnabled(mCurrentColor == 0);
     wangFiller.setCorrectionsEnabled(true);
     wangFiller.fillRegion(*stamp, *currentLayer, fill.region, std::move(fill.grid));
 
@@ -665,13 +684,13 @@ void WangBrush::updateBrushAt(FillRegion &fill, QPoint pos)
 
         switch (mBrushMode) {
         case PaintCorner:
-            for (int i = 0; i < 4; ++i) {
+            for (int i = 0; i < WangId::NumCorners; ++i) {
                 center.desired.setCornerColor(i, mCurrentColor);
                 center.mask.setCornerColor(i, WangId::INDEX_MASK);
             }
             break;
         case PaintEdge:
-            for (int i = 0; i < 4; ++i) {
+            for (int i = 0; i < WangId::NumEdges; ++i) {
                 center.desired.setEdgeColor(i, mCurrentColor);
                 center.mask.setEdgeColor(i, WangId::INDEX_MASK);
             }
